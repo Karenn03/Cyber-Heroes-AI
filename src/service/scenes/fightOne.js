@@ -1,6 +1,6 @@
 import dialogFigth from "../dialogFigth";
 import { enemiesDefeated, playerIsOnDialogue, store } from "../store";
-
+import { pipeline } from '@huggingface/transformers';
 
 export default async function figthOne(k, backScene) {
     
@@ -8,43 +8,74 @@ export default async function figthOne(k, backScene) {
     const canvasHeight = k.height();
     const enemiesCount = store.get(enemiesDefeated);
 
-    
-    function introDialogue() {
+    let questionTransformer;  // Definir la variable para el modelo
 
-        store.set(playerIsOnDialogue, true);
-
-        console.log("the player is in dialogue? ", store.get(playerIsOnDialogue));
-        const resp = "c. Cada 3 a 6 meses";
-        dialogFigth(
-            k,
-            "¿Qué tan frecuentemente se recomienda cambiar tus contraseñas?",
-            ["a. Solo cuando alguien la descubre ", "b.	Cada año", "c. Cada 3 a 6 meses", "d. Nunca, si es fuerte"],
-            k.vec2(canvasWidth / 2, canvasHeight / 2),
-            (selectedOption) => {
-                console.log("Opción seleccionada:", selectedOption);
-                if(selectedOption === resp){
-                    
-                    alert("Felicitaciones, Respondiste bien.")
-                    
-                    store.set(enemiesDefeated, [...enemiesCount, 1])
-                    
-                    console.log("cantidad de enemigos derrotados: ", store.get(enemiesDefeated));
-
-                    backScene();
-                   
-                }else{
-                    alert("Respuesta Incorrecta, Intenta de nuevo");
-                    
-                    backScene();
-                }
-            },
-            () => {
-                console.log("Diálogo cerrado");
-                // Lógica adicional si el diálogo se cierra sin enviar
-            }
-        );
-        
+    // Cargar el modelo una vez
+    async function loadModel() {
+        try {
+            questionTransformer = await pipeline('text2text-generation', 'Xenova/t5-small');
+            console.log("Modelo cargado exitosamente");
+            const transformedQuestionData = await questionTransformer("¿Qué tan frecuentemente se recomienda cambiar tus contraseñas?", {
+                max_length: 120,
+                do_sample: true,
+            });
+            console.log(transformedQuestionData);
+        } catch (error) {
+            console.error("Error al cargar el modelo:", error);
+        }
     }
+    
+    async function introDialogue() {
+        console.log("the player is in dialogue? ", store.get(playerIsOnDialogue));
+    
+        const originalQuestion = "¿Qué tan frecuentemente se recomienda cambiar tus contraseñas?";
+        const resp = "c. Cada 3 a 6 meses";
+    
+        let transformedQuestion = originalQuestion; // Iniciar con la pregunta original
+    
+        if (questionTransformer) {
+            try {
+                const transformedQuestionData = await questionTransformer(originalQuestion, {
+                    max_length: 120,
+                    do_sample: true,
+                });
+                transformedQuestion = transformedQuestionData[0].generated_text;
+            } catch (error) {
+                console.error("Error transformando la pregunta:", error);
+            }
+        } else {
+            console.error("Modelo no cargado correctamente.");
+        }
+    
+        // Reemplazo temporal: Usar un `prompt` para verificar la lógica
+        const options = [
+            "a. Solo cuando alguien la descubre",
+            "b. Cada año",
+            "c. Cada 3 a 6 meses",
+            "d. Nunca, si es fuerte",
+        ];
+        const promptMessage = `${transformedQuestion}\n\n${options
+            .map((opt, index) => `${String.fromCharCode(97 + index)}. ${opt}`)
+            .join("\n")}\n\nEscribe la letra de tu respuesta:`;
+    
+        const selectedOption = window.prompt(promptMessage);
+    
+        // Verificar respuesta
+        if (selectedOption && selectedOption.toLowerCase() === "c") {
+            alert("¡Felicitaciones, respondiste bien!");
+            store.set(enemiesDefeated, [...enemiesCount, 1]);
+            console.log("Cantidad de enemigos derrotados: ", store.get(enemiesDefeated));
+            backScene();
+        } else {
+            alert("Respuesta incorrecta, ¡intenta de nuevo!");
+            backScene();
+        }
+    }
+    
+
+
+    // Cargar el modelo antes de ejecutar la función
+    await loadModel();
 
     const background = k.add ([
         k.sprite("background_level_02"),
@@ -95,15 +126,13 @@ export default async function figthOne(k, backScene) {
 
     k.setGravity(gravity);
 
-
     enemies_one.play("idle");
 
     k.add(player);
     
-
    // Add the player to the scene
    enemies_one.play("idle");
    player.play("idle");
-   introDialogue();
-    
+    // Llamar a introDialogue cuando todo esté listo
+    introDialogue();
 }
