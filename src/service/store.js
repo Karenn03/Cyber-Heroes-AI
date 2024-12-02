@@ -6,3 +6,6 @@ export const curretPositionsPlayerAtom = atom(null);
 export const enemiesDefeated = atom([]);
 export const isMusicPlaying = atom(false);
 export const store = createStore(); 
+
+// Átomo para almacenar las preguntas usadas
+export const usedSecurityQuestions = atom([]);

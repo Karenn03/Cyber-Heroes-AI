@@ -10,9 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.21.0",
     "ciber-heroes-front": "file:",
+    "dotenv": "^16.4.5",
     "jotai": "^2.10.2",
     "kaplay": "^3001.0.2",
+    "openai": "^4.73.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0"
